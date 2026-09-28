@@ -1,432 +1,934 @@
-# Campus Bites — AI Smart Canteen
+# Campus Bites — Smart Canteen
 
-A modern campus canteen ordering system built with **Python, Flask, SQLite, HTML, CSS, and vanilla JavaScript**.
+Campus Bites is a web-based smart campus canteen ordering application built with **Python Flask, HTML, CSS, and JavaScript**.
 
-Campus Bites separates the application into a backend API and a frontend web server. The backend is the source of truth for menus, prices, cart quotes, orders, bills, inventory, payments, recommendations, and order lifecycle state.
+The project uses two Python files:
+
+- `canteen_server.py` — backend API, menu data, ordering logic, chatbot, combos, bills, and order status.
+- `website.py` — frontend web application served through Flask.
+
+> This README describes only the functionality present in these two project files.
+
+---
 
 ## Features
 
-### 🍽️ Menu & Food Discovery
-- Today's menu with weekday-based menus.
-- Browse menus for other days without accidentally ordering from a past/future day.
-- Search and category filtering.
-- Veg / non-veg information.
-- Spice-level indicators.
-- Allergen information on food cards.
-- Nutrition/calorie information.
-- Healthy-pick filtering.
-- Sold-out state driven by inventory.
-- Item-specific food images with fallback handling.
-- Popular/recommended dishes based on sales, ratings, and menu metadata.
+### 🍽️ Menu
 
-### 🛒 Smart Cart
-- Add, remove, and update quantities.
-- Portion variants such as half/full where supported.
-- Paid and free add-ons/customizations.
-- Multiple lines for the same dish when the variant/add-ons differ.
-- Server-side `/cart/quote` endpoint.
-- The browser never decides the final price.
-- Coupon/discount support.
-- Tax calculation performed by the backend.
-- Order notes with server-side sanitization.
-- Cart validation and quantity limits.
+The application provides a weekday-based canteen menu for:
 
-### 📦 Ordering & Pickup
-- Server-authoritative order validation.
-- Canteen opening-hours enforcement.
-- Time-slot pre-ordering.
-- Per-slot capacity limits.
-- Unique order/token number such as `Token A-27`.
-- Pickup PIN to prevent incorrect collection.
-- Cancellation grace period.
-- Order completion/pickup flow.
-- Automatic lifecycle: `Received → Preparing → Ready → Completed`.
-- Uncollected ready orders can automatically expire.
+- Monday
+- Tuesday
+- Wednesday
+- Thursday
+- Friday
+- Saturday
 
-### ⚡ Live Order Tracking
-- Server-Sent Events (SSE) for live bill/order updates.
-- Automatic polling fallback if SSE is unavailable.
-- Live queue position.
-- Estimated preparation time.
-- Customer UI reflects kitchen status changes without manually refreshing.
+Each food item contains information such as:
 
-### 👨‍🍳 Kitchen Dashboard
-Open `http://localhost:8000/kitchen`.
+- Name
+- Price
+- Category
+- Description
+- Food image
+- Vegetarian/non-vegetarian status
+- Spice level
+- Allergens
+- Preparation time
+- Popularity
+- Availability
 
-- Token-protected kitchen access.
-- Live order queue.
-- Change order status.
-- Mark items sold out / back in stock.
-- Adjust preparation times.
-- Live queue updates.
-- Inventory-aware ordering.
+The menu can be filtered by:
 
-### 🧾 Bills & Payments
-- Persistent SQLite bills.
-- Direct bill URLs: `http://localhost:8000/bill/<bill-id>`.
-- Printable bill/receipt.
-- QR code for bill access.
-- UPI deep-link/QR generation.
-- Pay-at-counter option.
-- Paid/unpaid payment state.
-- Demo wallet/prepaid balance.
-- Coupon discounts.
-- Loyalty points.
+- Category
+- Vegetarian items
+- Favorites
 
-> UPI/payment functionality is intentionally a local/demo abstraction. It does not connect to a real bank or payment provider.
+There is also a search box for searching dishes, categories, and descriptions.
 
-### ❤️ Favorites, History & Reorder
-- Favorites saved to the user's account/profile.
-- Order history.
-- Reorder previous purchases.
-- Stable dish identifiers across weekday menus.
+---
 
-### 👤 User Identity
-- Campus ID / phone-style login flow.
-- Mock OTP for local development.
-- User profile.
-- Dietary preferences.
-- Allergen exclusions.
-- Favorites and order history synced through the backend.
+## 🛒 Shopping Cart
 
-### 🥗 Dietary & Nutrition
-Supported dietary filtering/profile options include:
-- Vegetarian
-- Vegan
-- Jain
+Users can add food items to a cart and modify quantities.
 
-Users can also configure allergen exclusions. Dish cards can display nutrition/calorie information and support a healthy-pick filter.
+The cart supports:
 
-### ⭐ Ratings & Reviews
-- Quick order feedback.
-- Per-dish ratings and short reviews.
-- Duplicate feedback is rejected.
-- Review data is persisted in SQLite.
+- Full/Half portion selection
+- Add-ons
+- Quantity controls
+- Order notes
+- Cart item count
+- Cart total
+- Removing items
+- Adding multiple favorite items
+- Reordering items from previous bills
 
-### 🤖 AI Canteen Assistant
-The built-in rule-based assistant can handle:
-- Menu questions.
-- Dish prices.
-- Canteen timings.
-- Canteen location.
-- Order/bill status.
-- Budget-based food recommendations.
-- Combo recommendations.
-- Surprise-me recommendations.
-- Dietary/allergen-aware recommendations.
+Available add-ons include:
 
-It also supports Hindi responses for supported UI/chat flows and voice input through the browser Speech Recognition API.
+- Extra cheese
+- No onion
+- Extra spicy
 
-The chatbot is deliberately implemented without paid AI APIs.
+The backend validates:
 
-### 🎁 Combos & Recommendations
-- Budget-based combo generation.
-- Category hints.
-- Pair/triple combinations.
-- Server-side price validation.
-- Recommendation ranking based on availability, popularity, ratings, dietary constraints, and time of day.
+- Item IDs
+- Quantities
+- Availability
+- Portion variants
+- Add-ons
 
-### 👥 Group Ordering
-- Create a shared group order.
-- Share a group link.
-- Multiple people can add items to the shared cart.
-- Server validates the resulting order.
+---
 
-### 🔔 Notifications & PWA
-- Browser notification when an active order becomes ready, when permission is granted.
-- Sold-out notification hooks for inventory changes.
-- Installable PWA shell.
-- 192×192 and 512×512 icons.
-- Offline app-shell cache.
+## 📦 Ordering
 
-> The offline cache covers the application shell only. Ordering, account, inventory, payments, and other API operations still require the backend.
+Users can place an order directly from the cart.
 
-### 📊 Admin & Analytics
-Admin endpoints provide:
-- Order/revenue summaries.
-- Peak-hour analytics.
-- Best-selling dishes.
-- Prep-time information.
-- Inventory information.
-- CSV analytics export.
+When an order is placed, the backend creates a bill containing:
 
-Admin/kitchen APIs are protected using `X-Admin-Token`.
+- Bill ID
+- Ordered items
+- Quantity
+- Selected variant
+- Add-ons
+- Subtotal
+- Tax
+- Total
+- Order status
+- Estimated preparation time
+- Queue position
+- Optional customer note
 
-### 🔐 Reliability & Security Basics
-- Server-authoritative pricing.
-- Server-side cart validation.
-- Endpoint-specific rate limiting.
-- Rate-limit memory cleanup.
-- Configurable CORS origins.
-- Sanitized order notes.
-- Escaped customer-visible receipt content.
-- Admin token authentication.
-- SQLite persistence.
-- Automatic database schema initialization/migrations.
-- Graceful backend-offline UI.
-- Responsive/mobile-friendly interface.
-- Keyboard navigation and visible focus states.
-- Reduced-motion support.
-
-## Project Architecture
+The default order flow is:
 
 ```text
-                  Browser
-                     │
-                     ▼
-             website.py :8000
-          Frontend / presentation
-                     │
-              HTTP API + SSE
-                     │
-                     ▼
-          canteen_server.py :5000
-              Backend / business logic
-                     │
-                     ▼
-                SQLite DB
+Received → Preparing → Ready → Completed
 ```
 
-### `canteen_server.py`
-Responsible for menu data, inventory, pricing, cart quotes, order validation, bills, discounts, payments, user/profile data, favorites, reviews, lifecycle state, queue calculations, chatbot logic, combos, SSE, kitchen/admin APIs, and SQLite persistence.
+Orders can also be cancelled during the configured cancellation grace period.
 
-### `website.py`
-Responsible for serving the frontend, main application shell, direct bill URLs, group URLs, kitchen dashboard page, and PWA manifest. Frontend JavaScript communicates with the backend API; it does not become the source of truth for prices or order validation.
+---
 
-## Requirements
+## 🧾 Bill & Order Tracking
 
-- Windows, macOS, or Linux
-- Python 3.10+
-- VS Code recommended
-- Modern browser such as Chrome, Edge, or Firefox
-- No paid services required
+Every order receives a bill number.
 
-## Installation — VS Code
+The frontend provides a bill view containing:
 
-### 1. Open the project
+- Bill number
+- Order status
+- Progress tracker
+- Estimated waiting time
+- Queue position
+- Ordered items
+- Subtotal
+- Tax
+- Total
+- Customer note
+- QR code
+- Bill splitting calculation
+- Print option
+- Reorder option
+- Cancel option
+- Pickup completion option
 
-Extract the project and open the folder in VS Code. It should contain:
+Bills can also be opened directly using:
+
+```text
+http://localhost:8000/bill/<bill_id>
+```
+
+The QR code generated on the bill points to the corresponding bill page.
+
+---
+
+## ⏱️ Order Status & Queue
+
+The backend calculates an estimated waiting time based on:
+
+- Food preparation time
+- Current queue
+- Queue configuration
+
+Orders move through their lifecycle automatically based on elapsed time.
+
+The customer interface periodically checks the bill so that the displayed order status can update.
+
+A ready-order indicator is also displayed on the main page while an active order is being tracked.
+
+---
+
+## 💰 Combo Builder
+
+Users can build food combinations based on a budget.
+
+The combo builder allows users to:
+
+- Choose a budget from ₹50 to ₹200
+- Select a meal/category hint
+- Find combinations within the selected budget
+
+Supported hints include:
+
+- Any meal
+- Breakfast
+- Lunch
+- Snack
+
+The backend generates combinations using available menu items and returns their prices.
+
+The user can add a generated combo to the cart.
+
+---
+
+## 🤖 Canteen Assistant
+
+Campus Bites includes a built-in rule-based chatbot.
+
+The assistant can answer questions about:
+
+- Today's menu
+- Food prices
+- Canteen timings
+- Canteen location
+- Budget-based combos
+- Food recommendations
+- Order/bill status
+
+Example queries:
+
+```text
+What is on today?
+```
+
+```text
+How much is the Masala Chai?
+```
+
+```text
+I have ₹100
+```
+
+```text
+What are the timings?
+```
+
+```text
+Where is the canteen?
+```
+
+```text
+Where is order 1004?
+```
+
+```text
+Surprise me
+```
+
+The chatbot uses the current day's menu when providing menu-related information.
+
+---
+
+## 🎤 Voice Input
+
+The chatbot supports browser speech recognition when the browser provides:
+
+```text
+SpeechRecognition
+```
+
+or:
+
+```text
+webkitSpeechRecognition
+```
+
+The recognition language changes between:
+
+- English (`en-IN`)
+- Hindi (`hi-IN`)
+
+based on the selected interface language.
+
+---
+
+## ❤️ Favorites
+
+Users can mark dishes as favorites.
+
+Favorites are stored in the browser's `localStorage`.
+
+Features include:
+
+- Favorite/unfavorite dishes
+- Favorites filter
+- Add all available favorites to the cart
+
+---
+
+## 🔄 Reorder
+
+Previous orders are stored locally in the browser.
+
+The history section shows previous bill IDs and dates.
+
+Users can select:
+
+```text
+View / Reorder
+```
+
+to open a previous bill and add its available items back to the current cart.
+
+---
+
+## 🌱 Vegetarian Filter
+
+The menu provides a vegetarian-only filter.
+
+Food cards also indicate:
+
+```text
+🌱 Veg
+```
+
+or:
+
+```text
+🍗 Non-veg
+```
+
+The current menu data contains one non-vegetarian item:
+
+```text
+Chicken Biryani
+```
+
+on Friday.
+
+---
+
+## 🌶️ Spice Level
+
+Each food item has a spice-level indicator.
+
+The interface displays:
+
+- No spice
+- Mild
+- Medium
+- Spicy
+
+This information comes from the menu data in the backend.
+
+---
+
+## ⚠️ Allergen Information
+
+Menu items contain allergen information such as:
+
+- Dairy
+- Gluten
+- Peanuts
+- Soy
+
+The current frontend data model includes these allergens, although the current card UI primarily displays the item's dietary/spice/preparation information rather than rendering a separate allergen badge.
+
+---
+
+## 🌙 Dark Mode
+
+The frontend includes a dark theme.
+
+Users can switch between the normal and dark appearance using the theme button.
+
+The selected dark-mode state is saved in:
+
+```text
+localStorage
+```
+
+so it can be restored when the page is loaded again.
+
+---
+
+## 🌐 Language Toggle
+
+The interface contains an English/Hindi toggle.
+
+Currently, the implemented translations cover the main:
+
+- Menu heading
+- Combo builder heading
+
+and the voice-recognition language changes accordingly.
+
+The full interface is not translated.
+
+---
+
+## 📱 Responsive Design
+
+The frontend is designed to adapt to different screen sizes.
+
+It includes responsive layouts for:
+
+- Desktop
+- Tablet
+- Mobile
+
+Food cards change from three columns to two and eventually one column on smaller screens.
+
+---
+
+## 🔔 Sold-Out Notifications
+
+When an item is unavailable, the interface provides:
+
+```text
+🔔 Notify me
+```
+
+Users can request a notification for that dish.
+
+The notification preference is stored in:
+
+```text
+localStorage
+```
+
+under:
+
+```text
+soldoutNotify
+```
+
+---
+
+## 💬 Toast Notifications
+
+The frontend uses temporary toast messages for actions such as:
+
+- Adding items
+- Cancelling orders
+- Placing orders
+- Changing language
+- Adding favorites
+- Setting sold-out notifications
+- Feedback
+
+---
+
+## 👍 / 👎 Order Feedback
+
+Once an order reaches:
+
+```text
+Ready
+```
+
+or:
+
+```text
+Completed
+```
+
+the customer can submit:
+
+- 👍
+- 👎
+
+feedback.
+
+The backend prevents the same bill from being rated more than once.
+
+---
+
+## 📊 Admin Summary API
+
+The backend exposes:
+
+```text
+GET /admin/summary
+```
+
+The endpoint returns information including:
+
+- Current date
+- Number of active/non-cancelled orders
+- Revenue
+- Top-selling items
+- Feedback totals
+
+The current implementation does not include authentication for this endpoint.
+
+---
+
+## 🔐 Rate Limiting
+
+The backend includes a basic IP-based rate limiter.
+
+It limits repeated requests to protect endpoints such as:
+
+- Orders
+- Cancellation
+- Feedback
+- Chatbot
+
+The rate-limit configuration is defined in `CONFIG`.
+
+---
+
+## 🌐 CORS
+
+The backend adds CORS headers for the two local frontend origins:
+
+```text
+http://localhost:8000
+http://127.0.0.1:8000
+```
+
+This allows the frontend running on port `8000` to communicate with the backend running on port `5000`.
+
+---
+
+# Project Structure
+
+The project consists of two Python files:
 
 ```text
 canteen_final/
+│
 ├── canteen_server.py
-├── website.py
-├── requirements.txt
-├── README.md
-├── templates/
-│   ├── index.html
-│   └── kitchen.html
-├── static/
-│   ├── app.js
-│   ├── style.css
-│   ├── sw.js
-│   ├── manifest.webmanifest
-│   └── icons/
-│       ├── icon-192.png
-│       ├── icon-512.png
-│       └── icon.svg
-└── tests/
-    ├── test_canteen.py
-    └── test_playwright.py
+└── website.py
 ```
 
-### 2. Create and activate a virtual environment
+---
+
+# How the Application Works
+
+The project runs two Flask servers.
+
+```text
+                Browser
+                   │
+                   ▼
+          website.py :8000
+                   │
+                   │ HTTP requests
+                   ▼
+        canteen_server.py :5000
+                   │
+                   ▼
+             Menu / Orders
+             Bills / Chatbot
+             Combos / Status
+```
+
+### `website.py`
+
+Responsible for:
+
+- Frontend HTML
+- CSS
+- JavaScript
+- Menu display
+- Search/filter UI
+- Cart UI
+- Bill UI
+- Chat interface
+- Theme switching
+- Language toggle
+- Local browser storage
+- QR-code display
+- Frontend Flask routes
+
+### `canteen_server.py`
+
+Responsible for:
+
+- Menu data
+- Menu API
+- Canteen status
+- Order validation
+- Bill creation
+- Pricing
+- Variants
+- Add-ons
+- Queue calculations
+- Order lifecycle
+- Cancellation
+- Feedback
+- Combo generation
+- Chatbot
+- Rate limiting
+- Admin summary
+
+---
+
+# Requirements
+
+You need:
+
+- Python 3.x
+- VS Code or another Python IDE
+- A modern web browser
+- Internet access for the external food images and QRCode JavaScript library used by the frontend
+
+The application does not require a separate database server.
+
+The current backend stores its application state in Python memory.
+
+---
+
+# Setup in VS Code
+
+## 1. Open the project
+
+Open the folder containing:
+
+```text
+canteen_server.py
+website.py
+```
+
+in VS Code.
+
+---
+
+## 2. Open the VS Code terminal
+
+Use:
+
+```text
+Ctrl + `
+```
+
+---
+
+## 3. Create a virtual environment
 
 ```powershell
 python -m venv .venv
+```
+
+---
+
+## 4. Activate the virtual environment
+
+On Windows PowerShell:
+
+```powershell
 .\.venv\Scripts\Activate.ps1
 ```
 
-If PowerShell blocks activation:
+If activation is blocked by PowerShell:
 
 ```powershell
 Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
 ```
 
-Then activate again.
-
-### 3. Select the VS Code interpreter
-
-`Ctrl + Shift + P` → `Python: Select Interpreter` → choose `.venv\Scripts\python.exe`.
-
-### 4. Install dependencies
-
-```powershell
-python -m pip install -r requirements.txt
-```
-
-**Flask-CORS is not required.** CORS is implemented directly in `canteen_server.py`.
-
-## Running the Application
-
-Use two terminals.
-
-### Terminal 1 — Backend
+Then activate again:
 
 ```powershell
 .\.venv\Scripts\Activate.ps1
-$env:ADMIN_TOKEN="admin123"
-$env:ALLOWED_ORIGINS="http://localhost:8000,http://127.0.0.1:8000"
-$env:DB_PATH="canteen.db"
-$env:FRONTEND_BASE_URL="http://localhost:8000"
-$env:MOCK_OTP="1"
+```
+
+You should see:
+
+```text
+(.venv)
+```
+
+in the terminal.
+
+---
+
+## 5. Install Flask
+
+The two provided files directly require Flask.
+
+Install it with:
+
+```powershell
+python -m pip install flask
+```
+
+The frontend also loads QRCode.js from a CDN in the browser.
+
+---
+
+# Running the Application
+
+The application uses two servers.
+
+## Terminal 1 — Backend
+
+Run:
+
+```powershell
 python canteen_server.py
 ```
 
-Backend: `http://localhost:5000`
+The backend runs on:
 
-### Terminal 2 — Frontend
+```text
+http://127.0.0.1:5000
+```
+
+Keep this terminal open.
+
+---
+
+## Terminal 2 — Website
+
+Open a second VS Code terminal.
+
+Activate the environment again if required:
 
 ```powershell
 .\.venv\Scripts\Activate.ps1
-$env:ADMIN_TOKEN="admin123"
-$env:ALLOWED_ORIGINS="http://localhost:8000,http://127.0.0.1:8000"
-$env:DB_PATH="canteen.db"
-$env:FRONTEND_BASE_URL="http://localhost:8000"
-$env:MOCK_OTP="1"
+```
+
+Then run:
+
+```powershell
 python website.py
 ```
 
-Frontend: `http://localhost:8000`
-
-Open `http://localhost:8000` in the browser.
-
-## Useful URLs
-
-| Page | URL |
-|---|---|
-| Main application | `http://localhost:8000` |
-| Kitchen dashboard | `http://localhost:8000/kitchen` |
-| Direct bill | `http://localhost:8000/bill/<bill-id>` |
-| Group order | `http://localhost:8000/group/<group-id>` |
-| Backend health | `http://localhost:5000/health` |
-| Backend menu | `http://localhost:5000/menu` |
-| Backend status | `http://localhost:5000/status` |
-
-## Environment Variables
-
-| Variable | Default | Purpose |
-|---|---|---|
-| `ADMIN_TOKEN` | empty | Token required for kitchen/admin endpoints |
-| `ALLOWED_ORIGINS` | `http://localhost:8000,http://127.0.0.1:8000` | Allowed frontend origins |
-| `DB_PATH` | `canteen.db` | SQLite database path |
-| `FRONTEND_BASE_URL` | `http://localhost:8000` | Base URL used in bill QR codes |
-| `MOCK_OTP` | `1` | Enables the local/mock OTP flow |
-
-## Database
-
-SQLite stores users, orders, bills, order items, feedback, dish reviews, favorites, inventory, daily sales, payments, wallet balances, groups, and coupons. The schema is initialized/migrated automatically when the backend starts.
-
-To reset local data, stop the backend and delete `canteen.db`, then start the backend again.
-
-## Testing
-
-API tests:
-
-```powershell
-pytest -q tests/test_canteen.py
-```
-
-Optional Playwright browser smoke test:
-
-```powershell
-python -m pip install playwright
-python -m playwright install chromium
-$env:RUN_PLAYWRIGHT="1"
-pytest -q tests/test_playwright.py
-```
-
-The browser smoke test expects both servers to already be running.
-
-## Troubleshooting
-
-### `ModuleNotFoundError`
-
-Make sure `(.venv)` appears in the terminal, then run:
-
-```powershell
-python -m pip install -r requirements.txt
-```
-
-### Backend offline
-
-Check that both servers are running and test:
+The website runs on:
 
 ```text
-http://localhost:5000/health
+http://127.0.0.1:8000
 ```
 
-### CORS errors
+Open:
 
-Start the backend with:
-
-```powershell
-$env:ALLOWED_ORIGINS="http://localhost:8000,http://127.0.0.1:8000"
+```text
+http://localhost:8000
 ```
 
-Then restart it.
+in your browser.
 
-### Port already in use
+---
 
-```powershell
-netstat -ano | findstr :5000
-netstat -ano | findstr :8000
+# Important URLs
+
+| Purpose | URL |
+|---|---|
+| Main website | `http://localhost:8000` |
+| Bill page | `http://localhost:8000/bill/<bill_id>` |
+| Backend health | `http://localhost:5000/health` |
+| Canteen status | `http://localhost:5000/status` |
+| Menu | `http://localhost:5000/menu` |
+| Specific day's menu | `http://localhost:5000/menu/<day>` |
+| Bill API | `http://localhost:5000/bill/<bill_id>` |
+| Order status | `http://localhost:5000/order/<bill_id>/status` |
+| Admin summary | `http://localhost:5000/admin/summary` |
+
+---
+
+# Main API Endpoints
+
+### Menu
+
+```http
+GET /menu
+GET /menu/<day>
 ```
 
-Then stop the relevant PID with:
+### Canteen status
 
-```powershell
-taskkill /PID <PID> /F
+```http
+GET /status
 ```
 
-## Current Limitations
+### Health check
 
-1. OTP is mocked when `MOCK_OTP=1`; no real SMS provider is connected.
-2. UPI/payment confirmation is a local demo abstraction, not a real payment gateway.
-3. Browser-ready notifications use the Notification API rather than a VAPID/Web Push service.
-4. Pre-order slots are for the current operating day.
-5. Kitchen prep-time overrides are process-local rather than persisted as permanent configuration.
-6. The chatbot is rule-based and does not use an external LLM or paid AI API.
+```http
+GET /health
+```
 
-## Future / P3 Architecture
+### Create order
 
-Possible future extensions include multi-canteen support, role-based staff permissions, refunds and cancellation reasons, allergen-safe kitchen tickets/printer output, full Hindi/Marathi localization, an LLM-backed chatbot with strict tool calling, dark-mode-aware analytics charts, and Docker/Gunicorn single-origin deployment.
+```http
+POST /order
+```
 
-These are future design directions, not claims that they are production-ready in this version.
+### View bill
 
-## GitHub
+```http
+GET /bill/<bill_id>
+```
 
-### Suggested repository name
+### Order status
 
-`ai-smart-canteen`
+```http
+GET /order/<bill_id>/status
+```
 
-### GitHub repository description
+### Cancel order
 
-> AI-powered smart campus canteen system built with Flask, SQLite and vanilla JavaScript, featuring server-authoritative ordering, live order tracking, kitchen dashboard, inventory, time-slot pre-orders, chatbot recommendations, payments, favorites, group ordering and analytics.
+```http
+POST /order/<bill_id>/cancel
+```
+
+### Complete pickup
+
+```http
+POST /order/<bill_id>/complete
+```
+
+### Feedback
+
+```http
+POST /order/<bill_id>/feedback
+```
+
+### Chatbot
+
+```http
+POST /chat
+```
+
+### Combos
+
+```http
+POST /combos
+```
+
+### Admin summary
+
+```http
+GET /admin/summary
+```
+
+---
+
+# Configuration
+
+The main backend configuration is stored in the `CONFIG` dictionary inside `canteen_server.py`.
+
+Current settings include:
+
+```text
+Name: Campus Bites
+Location: Main Academic Block, Campus
+Opening hour: 08:00
+Closing hour: 20:00
+Tax rate: 0%
+Currency: ₹
+Cancellation grace period: 2 minutes
+Base queue time: 2 minutes
+Queue time per order: 3 minutes
+Rate limit window: 60 seconds
+Rate limit maximum: 20 requests
+```
+
+These values can be changed directly in `canteen_server.py`.
+
+---
+
+# Browser Storage
+
+The frontend uses `localStorage` for client-side information including:
+
+```text
+canteenCart
+favorites
+dark
+lang
+soldoutNotify
+activeBill
+lastBill
+pastOrders
+```
+
+This means cart, favorites, language/theme preferences, and order history are stored in the browser rather than in a database.
+
+---
+
+# PWA Support
+
+The frontend includes:
+
+```text
+/manifest.webmanifest
+```
+
+and:
+
+```text
+/sw.js
+```
+
+The service worker currently provides basic installation/activation hooks, while the manifest contains the application metadata.
+
+The current manifest does not define application icons and the service worker does not implement an offline cache.
+
+---
+
+# Limitations of the Current Version
+
+The following are characteristics of the provided implementation:
+
+- Application data is stored in memory and is lost when the backend process restarts.
+- `flask-cors` is not required; CORS headers are implemented directly.
+- The admin summary endpoint currently has no authentication.
+- The language toggle only translates selected headings rather than the entire interface.
+- The frontend uses periodic bill polling rather than Server-Sent Events.
+- There is no separate kitchen/staff dashboard.
+- There is no SQLite persistence.
+- There is no real payment integration.
+- There is no user account/login system.
+- There is no persistent inventory system.
+- The PWA service worker does not provide an offline cache.
+- The manifest currently contains no icons.
+- Food images are loaded from external Unsplash URLs.
+- The chatbot is rule-based rather than powered by an external LLM.
+- The current frontend directly uses the backend's menu item IDs when constructing cart entries.
+
+These limitations reflect the functionality present in the two provided Python files.
+
+---
+
+# Technologies Used
+
+- **Python**
+- **Flask**
+- **HTML5**
+- **CSS3**
+- **JavaScript**
+- **Browser Local Storage**
+- **QRCode.js**
+- **Unsplash image URLs**
+
+---
+
+# GitHub Repository Description
+
+### Recommended description
+
+> Smart campus canteen web application built with Python Flask and JavaScript, featuring weekday menus, smart cart, food variants and add-ons, combo recommendations, chatbot assistance, order tracking, bills, favorites, feedback, and responsive dark-mode UI.
 
 ### Short description
 
-> Smart campus canteen ordering system with Flask, SQLite, live order tracking, inventory, kitchen dashboard, chatbot, payments and analytics.
+> Smart campus canteen ordering app built with Flask and JavaScript, featuring menus, cart, combos, chatbot, order tracking, bills, favorites and feedback.
 
-### Suggested GitHub topics
+---
+
+# Suggested GitHub Topics
 
 ```text
 python
 flask
-sqlite
 javascript
 html
 css
-canteen-management
+canteen
 food-ordering
 campus-app
 smart-canteen
-restaurant-management
-sse
-pwa
-web-development
+chatbot
+web-app
 ```
-
-## License
-
-Add the license that matches the project's intended distribution before publishing publicly.
